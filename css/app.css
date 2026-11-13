@@ -306,3 +306,62 @@ body.mode-cetak #app { max-width: 860px; padding-bottom: var(--s10); }
 .bln-bar i.in { background: var(--in); } .bln-bar i.out { background: var(--out); }
 .bln-n { display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; line-height: 18px; }
 .bln-n b { font-weight: 600; }
+
+/* ---------- Ibadah: jadwal sholat & tahlil ---------- */
+.tab { min-width: 0; }
+.tab-ic { width: min(56px, 100%); }
+.kartu-sholat { display: flex; align-items: center; gap: var(--s3); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s3) var(--s4); }
+.ks-ic { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
+.ks-ic .ic { width: 20px; height: 20px; }
+.ks-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ks-main b { font-size: 17px; line-height: 24px; }
+.ks-sisa { font-size: 13px; line-height: 18px; color: var(--text-2); font-variant-numeric: tabular-nums; text-align: right; max-width: 92px; }
+.kartu-waktu .saldo small { font-size: 18px; font-weight: 600; opacity: .85; }
+.kartu-waktu .diperbarui { font-variant-numeric: tabular-nums; }
+.jadwal .row { align-items: center; }
+.jadwal .row span { font-size: 16px; }
+.jadwal .row.sunnah span, .jadwal .row.sunnah b { color: var(--text-2); font-weight: 400; }
+.jadwal .row.wajib b { font-size: 17px; }
+.jadwal .row em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--on-brand); background: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+.jadwal .row.aktif span, .jadwal .row.aktif b { color: var(--brand); font-weight: 700; }
+.jadwal .row.berikut { background: var(--bg-subtle); margin: 0 calc(-1 * var(--s4)); padding-left: var(--s4); padding-right: var(--s4); }
+.jadwal .row.berikut + .row { border-top-color: transparent; }
+.menu-ibadah { flex-direction: row !important; align-items: center; }
+.menu-ibadah > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+.menu-ibadah .tx-ic { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 999px; }
+.menu-ibadah > .ic { color: var(--text-2); }
+.kiblat { flex-direction: row !important; align-items: center; }
+.kiblat > div { display: flex; flex-direction: column; gap: 2px; }
+.kompas { width: 88px; height: 88px; flex: none; }
+.kompas circle { fill: var(--bg-subtle); stroke: var(--border); stroke-width: 2; }
+.kompas text { font: 700 11px var(--font); fill: var(--text-2); }
+.kompas .jarum { fill: var(--brand); }
+
+.tahlil-alat { flex-direction: row !important; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s3) !important; }
+.seg.dua { grid-template-columns: 1fr 1fr; flex: 1; min-width: 180px; }
+.ukuran { display: flex; align-items: center; gap: 2px; }
+.ukuran .sub { margin-right: var(--s2); }
+.ukuran .btn-ic { font: 700 15px var(--font); color: var(--brand); background: var(--bg-subtle); width: 44px; height: 44px; }
+.daftar-tahlil { position: sticky; top: 0; z-index: 5; background: var(--bg-canvas); margin: 0 calc(-1 * var(--s5)); padding: var(--s2) var(--s5); display: flex; flex-wrap: nowrap; gap: var(--s2); overflow-x: auto; scrollbar-width: none; }
+.daftar-tahlil::-webkit-scrollbar { display: none; }
+.daftar-tahlil .chip { flex: none; white-space: nowrap; font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-2); }
+.tahlil { display: flex; flex-direction: column; gap: var(--s5); --arab: 28px; }
+.bagian { scroll-margin-top: 64px; margin-top: 0; }
+.bag-hdr { display: flex; align-items: center; gap: var(--s3); }
+.bag-hdr h2 { flex: 1; }
+.bag-no { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: 14px; flex: none; }
+.hitung { min-width: 72px; min-height: 44px; border-radius: 999px; border: 1.5px solid var(--brand); background: var(--bg-surface); color: var(--text-2); font: 600 15px var(--font); cursor: pointer; font-variant-numeric: tabular-nums; padding: 0 14px; }
+.hitung b { color: var(--brand); font-size: 17px; }
+.hitung.selesai { background: var(--brand); color: var(--on-brand); }
+.hitung.selesai b { color: var(--on-brand); }
+.ayat { padding: var(--s4); }
+.ayat + .ayat { border-top: 1px solid var(--border); }
+.arab { margin: 0; font-family: "Amiri Quran", "Amiri", "Scheherazade New", "Noto Naskh Arabic", "Geeza Pro", serif; font-size: var(--arab); line-height: 2.1; text-align: right; color: var(--text); }
+.latin { margin: var(--s3) 0 0; font-size: 15px; line-height: 23px; color: var(--brand-strong); font-style: italic; }
+:root:not([data-theme="dark"]) .latin { color: var(--brand); }
+.arti { margin: var(--s2) 0 0; font-size: 15px; line-height: 23px; color: var(--text-2); }
+.arti .ref { font-size: 13px; white-space: nowrap; }
+.tanpa-latin .latin, .tanpa-arti .arti { display: none; }
+.pemilih .nb-teks { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.pemilih .nb-teks b { font-size: 16px; line-height: 22px; }
+.kompas .garis { stroke: var(--brand); stroke-width: 3; stroke-linecap: round; }
