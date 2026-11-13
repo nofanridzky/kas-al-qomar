@@ -192,5 +192,14 @@
     }
   }
 
-  window.KasData = { muat, saldoDana, saldoTotal, arus, perKategori, sign, _parseCSV: parseCSV, _tanggal: tanggal, _angka: angka };
+  // Data terakhir yang tersimpan di perangkat, untuk ditampilkan seketika sebelum data baru tiba.
+  function muatTersimpan() {
+    const cfg = window.KAS_CONFIG || {};
+    if (!(cfg.apiUrl || cfg.sheetId)) return null;
+    const c = readCache();
+    if (!c || !c.raw) return null;
+    try { return build(c.raw, Object.assign({}, c.sumber, { jenis: "tersimpan" })); } catch (e) { return null; }
+  }
+
+  window.KasData = { muat, muatTersimpan,saldoDana, saldoTotal, arus, perKategori, sign, _parseCSV: parseCSV, _tanggal: tanggal, _angka: angka };
 })();

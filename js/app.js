@@ -281,7 +281,7 @@
     const peta = urlAman(p.link_peta) || (p.alamat ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.alamat) : "");
     const fb = urlAman(p.link_facebook);
     const s = D.sumber;
-    const sumber = s.jenis === "contoh" ? "Data contoh (config.js belum diisi)" : s.jenis === "cache" ? "Data tersimpan (offline)" : "Google Sheets";
+    const sumber = s.jenis === "contoh" ? "Data contoh (config.js belum diisi)" : s.jenis === "cache" ? "Data tersimpan (offline)" : s.jenis === "tersimpan" ? "Data tersimpan di perangkat, sedang diperbarui" : "Google Sheets";
     const tema = document.documentElement.dataset.theme || "auto";
     return `${banner()}${headerTab("Info musholla")}
       <div class="card pad profil">${logo(72)}<b>${esc(p.nama)}</b><span>${esc(p.naungan || "")}</span></div>
@@ -438,7 +438,7 @@
 
   async function muat(latar) {
     try { D = await K.muat(); galatMuat = D.sumber.galat || null; if (D.sumber.jenis === "cache") galatMuat = null; }
-    catch (e) { if (!latar || !D) galatMuat = String(e.message || e); }
+    catch (e) { if (!latar || !D) galatMuat = String(e.message || e); else if (D.sumber.jenis === "tersimpan") D.sumber.jenis = "cache"; }
     // jangan ganggu orang yang sedang mengetik di kolom cari
     if (latar && document.activeElement && document.activeElement.id === "cari") return;
     const y = scrollY; render(); if (latar) scrollTo(0, y);
@@ -447,7 +447,10 @@
   // ---------- start ----------
   try { const t = localStorage.getItem("kas-al-qomar:tema"); if (t && t !== "auto") document.documentElement.dataset.theme = t; } catch (e) { /* abaikan */ }
   rutePrev = location.hash.split("?")[0];
-  muat();
+  // tampilkan data tersimpan seketika (bila ada), lalu ambil data terbaru di belakang layar
+  const tersimpan = K.muatTersimpan();
+  if (tersimpan) { D = tersimpan; render(); }
+  muat(!!tersimpan);
   const menit = Math.max(1, +(window.KAS_CONFIG || {}).segarkanMenit || 5);
   setInterval(() => { if (document.visibilityState === "visible" && !document.body.classList.contains("mode-cetak")) muat(true); }, menit * 60000);
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
