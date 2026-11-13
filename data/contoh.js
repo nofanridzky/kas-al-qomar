@@ -8,3 +8,4 @@ window.KAS_CONTOH = {
  "Pengurus": "Jabatan,Nama,WhatsApp\nKetua,[NAMA KETUA],\nBendahara,[NAMA BENDAHARA],\nSekretaris,[NAMA SEKRETARIS],\n",
  "Kegiatan": "Nama,Jadwal,Ikon\nSholat Jum'at,\"Setiap Jum'at, waktu Dzuhur\",jam\nKajian rutin,\"Setiap Jum'at, Maghrib–Isya · terbuka untuk umum\",buku\nLaporan kas,Diumumkan setiap Jum'at setelah sholat,laporan\n"
 };
+window.KAS_CONTOH.Agenda = "Judul,Isi,Jenis,Tanggal mulai,Tanggal selesai,Jam,Tempat,Tampilkan\n[CONTOH] Infaq renovasi tempat wudhu,\"Kotak khusus renovasi tersedia di depan musholla setiap Jum'at.\",Pengumuman,2026-11-01,2026-11-30,,,Ya\n[CONTOH] Kerja bakti membersihkan musholla,Membawa alat kebersihan masing-masing.,Kegiatan,2026-11-15,,07.00,Halaman musholla,Ya\n[CONTOH] Kajian bulanan,Terbuka untuk umum.,Kegiatan,2026-11-21,,19.30,Ruang utama,Ya\n[CONTOH] Pengumuman lama,Tidak boleh tampil karena sudah lewat.,Pengumuman,2026-10-01,2026-10-31,,,Ya\n";
