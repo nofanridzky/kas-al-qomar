@@ -1,6 +1,6 @@
 // Service worker: menyimpan tampilan aplikasi agar bisa dibuka saat offline.
 // Data Sheets disimpan oleh js/data.js (localStorage), bukan di sini.
-const VERSI = "kas-al-qomar-v3";
+const VERSI = "kas-al-qomar-v4";
 const FILE = ["./", "index.html", "config.js", "css/app.css", "js/icons.js", "js/data.js", "js/app.js",
   "data/contoh.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
