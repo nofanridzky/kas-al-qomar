@@ -1,0 +1,16 @@
+{
+  "name": "Kas Musholla Al Qomar",
+  "short_name": "Kas Al Qomar",
+  "description": "Laporan keuangan Musholla Al Qomar Dps untuk jamaah.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F8F3",
+  "theme_color": "#1F7A4D",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
