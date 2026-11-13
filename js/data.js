@@ -1,6 +1,6 @@
 // Memuat dan mengolah data dari Google Sheets (atau data contoh).
 (function () {
-  const TABS = ["Transaksi", "Dana", "Kategori", "Program", "Profil", "Pengurus", "Kegiatan"];
+  const TABS = ["Transaksi", "Dana", "Kategori", "Program", "Profil", "Pengurus", "Kegiatan", "Agenda"];
   const CACHE_KEY = "kas-al-qomar:data";
 
   // ---------- CSV ----------
@@ -96,7 +96,13 @@
     const pengurus = t.Pengurus.filter(r => r.jabatan || r.nama).map(r => ({ jabatan: r.jabatan, nama: r.nama, wa: r.whatsapp }));
     const kegiatan = t.Kegiatan.filter(r => r.nama).map(r => ({ nama: r.nama, jadwal: r.jadwal, ikon: r.ikon }));
 
-    const d = { sumber, profil, kategori, dana, transaksi, program, pengurus, kegiatan, masalah };
+    // Agenda: pengumuman dan kegiatan bertanggal. Tab ini opsional.
+    const agenda = (t.Agenda || []).filter(r => r.judul && ya(r.tampilkan)).map(r => {
+      const mulai = tanggal(r.tanggal_mulai), selesai = tanggal(r.tanggal_selesai) || mulai;
+      return { judul: r.judul, isi: r.isi, jenis: /^peng/i.test(r.jenis || "") ? "Pengumuman" : "Kegiatan",
+               mulai, selesai, jam: r.jam, tempat: r.tempat };
+    }).sort((a, b) => (a.mulai || "").localeCompare(b.mulai || ""));
+    const d = { sumber, profil, kategori, dana, transaksi, program, pengurus, kegiatan, agenda, masalah };
     // program yang Terkumpul-nya kosong memakai saldo dananya
     program.forEach(p => { if (p.terkumpul == null) p.terkumpul = saldoDana(d, p.dana); });
     return d;

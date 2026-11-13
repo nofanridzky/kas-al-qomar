@@ -100,6 +100,47 @@
     <path opacity=".5" d="M60 6 L73 31 L98 22 L89 47 L114 60 L89 73 L98 98 L73 89 L60 114 L47 89 L22 98 L31 73 L6 60 L31 47 L22 22 L47 31 Z"/>
     <path opacity=".35" transform="translate(30 30) scale(.5)" d="M60 6 L73 31 L98 22 L89 47 L114 60 L89 73 L98 98 L73 89 L60 114 L47 89 L22 98 L31 73 L6 60 L31 47 L22 22 L47 31 Z"/></g></svg>`;
 
+  // ---------- Agenda (pengumuman & kegiatan) ----------
+  function pengumumanAktif() {
+    const h = hariIni();
+    return (D.agenda || []).filter(a => a.jenis === "Pengumuman" && (!a.mulai || a.mulai <= h) && (!a.selesai || a.selesai >= h));
+  }
+  function kegiatanMendatang(n) {
+    const h = hariIni();
+    return (D.agenda || []).filter(a => a.jenis === "Kegiatan" && a.mulai && (a.selesai || a.mulai) >= h).slice(0, n || 99);
+  }
+  function waktuAgenda(a) {
+    const tgl = !a.mulai ? "" : a.selesai && a.selesai !== a.mulai ? rentang(a.mulai, a.selesai) : tglPanjang(a.mulai);
+    return [tgl, a.jam, a.tempat].filter(Boolean).join(" · ");
+  }
+  function kartuPengumuman(a) {
+    return `<div class="umum"><span class="umum-ic">${ic("info")}</span><div><b>${esc(a.judul)}</b>${a.isi ? `<p>${esc(a.isi)}</p>` : ""}
+      ${a.selesai ? `<span class="sub">Berlaku sampai ${tglPendek(a.selesai)}</span>` : ""}</div></div>`;
+  }
+  function barisKegiatan(a) {
+    const d = dOf(a.mulai);
+    return `<div class="agenda"><span class="agenda-tgl"><b>${d.getUTCDate()}</b><span>${BL3[d.getUTCMonth()]}</span></span>
+      <div><b>${esc(a.judul)}</b><span>${esc(waktuAgenda(a))}</span>${a.isi ? `<span>${esc(a.isi)}</span>` : ""}</div></div>`;
+  }
+
+  // pekan berjalan: Minggu sampai hari ini (sama dengan layar TV)
+  function pekanIni() {
+    const h = hariIni(), d = dOf(h);
+    const minggu = iso(new Date(d.getTime() - d.getUTCDay() * 864e5));
+    return { dari: minggu, sampai: h, ...K.arus(D, minggu, h) };
+  }
+  function teksRingkasanPekan() {
+    const p = D.profil, w = pekanIni();
+    const dana = D.dana.map(f => `• ${f.nama}: ${rp(K.saldoDana(D, f.nama))}`).join("\n");
+    const umum = pengumumanAktif().slice(0, 3).map(a => `• ${a.judul}`).join("\n");
+    const agenda = kegiatanMendatang(3).map(a => `• ${a.judul} (${waktuAgenda(a)})`).join("\n");
+    return `*Laporan Kas ${p.nama || ""}*\nPekan ${rentang(w.dari, w.sampai)}\n\n` +
+      `Pemasukan: + ${rp(w.masuk)}\nPengeluaran: – ${rp(w.keluar)}\n\n` +
+      `Saldo per ${tglPendek(w.sampai)}:\n${dana}\n*Total: ${rp(K.saldoTotal(D))}*` +
+      (umum ? `\n\n*Pengumuman*\n${umum}` : "") + (agenda ? `\n\n*Agenda*\n${agenda}` : "") +
+      `\n\nRincian lengkap: ${location.href.split("#")[0]}` + (D.sumber.jenis === "contoh" ? "\n\n(DATA CONTOH)" : "");
+  }
+
   // ---------- Beranda ----------
   function vBeranda() {
     const p = D.profil, hari = hariIni(), ym = hari.slice(0, 7);
@@ -113,6 +154,7 @@
       <header class="hdr-home">${logo(40)}<div class="hdr-nama"><b>${esc(p.nama_pendek || p.nama)}</b><span>${esc(p.kota || "")}</span></div>
         <a class="btn-ic" href="#/info" aria-label="Info musholla">${ic("info")}</a></header>
       <p class="salam">Assalamu'alaikum. Berikut laporan kas ${esc(p.nama_pendek || p.nama)} hari ini.</p>
+      ${pengumumanAktif().slice(0, 3).map(kartuPengumuman).join("")}
       <a class="kartu-saldo" href="#/laporan">${ornamen}
         <span class="overline">Saldo seluruh dana</span>
         <span class="saldo">${rp(total)}</span>
@@ -131,6 +173,8 @@
       <section><h2>Transaksi terbaru</h2>
         <div class="card txlist">${terbaru.map(t => barisTx(t)).join("") || '<p class="kosong">Belum ada transaksi.</p>'}</div>
         <a class="btn sec" href="#/riwayat">Lihat semua transaksi</a></section>
+      ${kegiatanMendatang(2).length ? `<section><h2>Agenda terdekat</h2><div class="card list">${kegiatanMendatang(2).map(barisKegiatan).join("")}</div>
+        <a class="link-c" href="#/info">Lihat semua agenda</a></section>` : ""}
       ${tabBar("beranda")}`;
   }
 
@@ -173,7 +217,12 @@
     const pr = D.profil;
     const prev = i > 0 ? ada[i - 1] : null, next = i >= 0 && i < ada.length - 1 ? ada[i + 1] : null;
     const teksWA = `Laporan kas ${pr.nama || ""} — ${bulanNama(ym)}\nSaldo awal: ${rp(awal)}\nPemasukan: + ${rp(a.masuk)}\nPengeluaran: – ${rp(a.keluar)}\nSaldo ${berjalan ? "per " + tglPendek(akhir) : "akhir"}: ${rp(awal + a.masuk - a.keluar)}\n\n${location.href.split("#")[0]}#/laporan/${ym}`;
+    const w = pekanIni();
     return `${banner()}${headerTab("Laporan keuangan")}
+      <section class="pekan card pad"><div><h2>Pekan ini</h2><p class="sub">${rentang(w.dari, w.sampai)} · untuk diumumkan setiap Jum'at</p></div>
+        <div class="dua-kol"><div><span class="overline">Pemasukan</span><b class="num in">+ ${rp(w.masuk)}</b></div><div><span class="overline">Pengeluaran</span><b class="num out">– ${rp(w.keluar)}</b></div></div>
+        <a class="btn pri" href="https://wa.me/?text=${encodeURIComponent(teksRingkasanPekan())}" target="_blank" rel="noopener">${ic("bagikan")}Kirim ringkasan ke WhatsApp</a>
+        <button class="btn sec" id="salinPekan">${ic("salin")}Salin teks ringkasan</button></section>
       <div class="pemilih card">
         <a class="btn-ic ${prev ? "" : "off"}" ${prev ? `href="#/laporan/${prev}"` : 'aria-disabled="true"'} aria-label="Bulan sebelumnya">${ic("chevron-kiri")}</a>
         <b>${bulanNama(ym)}</b>
@@ -189,9 +238,83 @@
       <section><h2>Pemasukan per kategori</h2><div class="card pad">${barKategori(K.perKategori(D, awalBulan(ym), akhir, "Masuk"), "Masuk")}</div></section>
       <section><h2>Pengeluaran per kategori</h2><div class="card pad">${barKategori(K.perKategori(D, awalBulan(ym), akhir, "Keluar"), "Keluar")}</div></section>
       <a class="btn pri" href="#/cetak/${ym}">${ic("unduh")}Unduh laporan PDF</a>
+      <a class="btn sec" href="#/tahun/${ym.slice(0, 4)}">${ic("kalender")}Laporan tahunan ${ym.slice(0, 4)}</a>
       <a class="btn sec" href="https://wa.me/?text=${encodeURIComponent(teksWA)}" target="_blank" rel="noopener">${ic("bagikan")}Bagikan ke WhatsApp</a>
       <p class="note c">Diperiksa oleh ${esc(pr.pemeriksa || "—")}${pr.tanggal_pemeriksaan ? " · " + esc(pr.tanggal_pemeriksaan) : ""}</p>
       ${tabBar("laporan")}`;
+  }
+
+  // ---------- Laporan tahunan ----------
+  function dataTahun(y) {
+    const hari = hariIni();
+    const mulaiCatat = D.dana.reduce((m, f) => (f.per > "0000-00-00" && (!m || f.per < m) ? f.per : m), "") || `${y}-01-01`;
+    const dari = `${y}-01-01` < mulaiCatat ? mulaiCatat : `${y}-01-01`;
+    const sampai = `${y}-12-31` > hari ? hari : `${y}-12-31`;
+    const awal = K.saldoTotal(D, kemarin(dari));
+    const bulan = [];
+    for (let m = 1; m <= 12; m++) {
+      const ym = `${y}-${String(m).padStart(2, "0")}`;
+      if (akhirBulan(ym) < dari || awalBulan(ym) > sampai) { bulan.push({ ym, kosong: true }); continue; }
+      const a = K.arus(D, awalBulan(ym) < dari ? dari : awalBulan(ym), akhirBulan(ym) > sampai ? sampai : akhirBulan(ym));
+      bulan.push({ ym, ...a, saldo: K.saldoTotal(D, akhirBulan(ym) > sampai ? sampai : akhirBulan(ym)) });
+    }
+    const tot = K.arus(D, dari, sampai);
+    return { y, dari, sampai, awal, bulan, tot, akhir: awal + tot.masuk - tot.keluar, berjalan: sampai === hari && sampai < `${y}-12-31`,
+             mulaiCatatan: dari !== `${y}-01-01` };
+  }
+  function tahunTersedia() {
+    const s = new Set(D.transaksi.map(t => t.tanggal.slice(0, 4))); s.add(hariIni().slice(0, 4));
+    return [...s].sort();
+  }
+  function vTahun(y) {
+    const ada = tahunTersedia(); y = ada.includes(y) ? y : ada[ada.length - 1];
+    const T = dataTahun(y), i = ada.indexOf(y);
+    const prev = i > 0 ? ada[i - 1] : null, next = i < ada.length - 1 ? ada[i + 1] : null;
+    const maks = Math.max(1, ...T.bulan.filter(b => !b.kosong).map(b => Math.max(b.masuk, b.keluar)));
+    return `${banner()}${headerBack("Laporan tahunan", "#/laporan")}
+      <div class="pemilih card">
+        <a class="btn-ic ${prev ? "" : "off"}" ${prev ? `href="#/tahun/${prev}"` : 'aria-disabled="true"'} aria-label="Tahun sebelumnya">${ic("chevron-kiri")}</a>
+        <b>Tahun ${y}</b>
+        <a class="btn-ic ${next ? "" : "off"}" ${next ? `href="#/tahun/${next}"` : 'aria-disabled="true"'} aria-label="Tahun berikutnya">${ic("chevron-kanan")}</a></div>
+      <section><h2>Ringkasan ${y}</h2><p class="sub">Semua dana${T.berjalan ? " · tahun berjalan" : ""}${T.mulaiCatatan ? ` · pencatatan mulai ${tglPendek(T.dari)}` : ""}</p>
+        <div class="card list">
+          <div class="row"><span>Saldo awal, ${tglTanpaTahun(T.dari)}</span><b class="num">${rp(T.awal)}</b></div>
+          <div class="row"><span>Pemasukan</span><b class="num in">+ ${rp(T.tot.masuk)}</b></div>
+          <div class="row"><span>Pengeluaran</span><b class="num out">– ${rp(T.tot.keluar)}</b></div>
+          <div class="row total"><span>Saldo ${T.berjalan ? "per" : "akhir,"} ${tglTanpaTahun(T.sampai)}</span><b class="num">${rp(T.akhir)}</b></div></div></section>
+      <section><h2>Per bulan</h2><div class="card list">${T.bulan.map(b => b.kosong
+        ? `<div class="row bln kosong"><span>${BLN[+b.ym.slice(5) - 1]}</span><span class="sub">—</span></div>`
+        : `<a class="row bln" href="#/laporan/${b.ym}"><span>${BLN[+b.ym.slice(5) - 1]}</span>
+            <span class="bln-bar"><i class="in" style="width:${(b.masuk / maks * 100).toFixed(1)}%"></i><i class="out" style="width:${(b.keluar / maks * 100).toFixed(1)}%"></i></span>
+            <span class="bln-n"><b class="num in">+ ${ribu(b.masuk)}</b><b class="num out">– ${ribu(b.keluar)}</b></span></a>`).join("")}</div>
+        <p class="note">Angka dalam rupiah. Ketuk bulan untuk melihat laporannya.</p></section>
+      <section><h2>Pemasukan per kategori</h2><div class="card pad">${barKategori(K.perKategori(D, T.dari, T.sampai, "Masuk"), "Masuk")}</div></section>
+      <section><h2>Pengeluaran per kategori</h2><div class="card pad">${barKategori(K.perKategori(D, T.dari, T.sampai, "Keluar"), "Keluar")}</div></section>
+      <a class="btn pri" href="#/cetak-tahun/${y}">${ic("unduh")}Unduh laporan tahunan PDF</a>
+      ${tabBar("laporan")}`;
+  }
+  function vCetakTahun(y) {
+    const T = dataTahun(y || hariIni().slice(0, 4)), p = D.profil;
+    const kat = j => K.perKategori(D, T.dari, T.sampai, j).map(r => `<tr><td>${esc(r.nama)}</td><td class="r">${ribu(r.nilai)}</td><td class="r">${persen(r.persen)}</td></tr>`).join("") || `<tr><td colspan="3">—</td></tr>`;
+    const org = j => (D.pengurus.find(o => (o.jabatan || "").toLowerCase() === j) || {}).nama || "";
+    return `<div class="cetak-alat"><a class="btn sec" href="#/tahun/${T.y}" data-kembali>${ic("kembali")}Kembali</a><button class="btn pri" id="cetak">${ic("cetak")}Cetak / simpan PDF</button></div>
+      <article class="a4">
+        <header class="a4-hdr">${logo(44)}<div><h1>Laporan Kas Tahunan ${esc(p.nama || "")}</h1><p>Tahun ${T.y} (${tglPendek(T.dari)} – ${tglPendek(T.sampai)}) · ${esc(p.alamat || "")}</p></div></header>
+        <h2>Ringkasan</h2>
+        <table class="t"><tr><td>Saldo awal, ${tglPendek(T.dari)}</td><td class="r">${rp(T.awal)}</td></tr>
+          <tr><td>Pemasukan</td><td class="r">${rp(T.tot.masuk)}</td></tr><tr><td>Pengeluaran</td><td class="r">${rp(T.tot.keluar)}</td></tr>
+          <tr class="b"><td>Saldo ${T.berjalan ? "per" : "akhir,"} ${tglPendek(T.sampai)}</td><td class="r">${rp(T.akhir)}</td></tr></table>
+        <table class="t"><tr class="h"><td>Saldo per dana (${tglPendek(T.sampai)})</td><td class="r">Rp</td></tr>${D.dana.map(f => `<tr><td>${esc(f.nama)}</td><td class="r">${ribu(K.saldoDana(D, f.nama, T.sampai))}</td></tr>`).join("")}</table>
+        <h2>Per bulan</h2>
+        <table class="t"><tr class="h"><td>Bulan</td><td class="r">Pemasukan</td><td class="r">Pengeluaran</td><td class="r">Selisih</td><td class="r">Saldo akhir</td></tr>
+          ${T.bulan.map(b => b.kosong ? `<tr><td>${BLN[+b.ym.slice(5) - 1]}</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>`
+            : `<tr><td>${BLN[+b.ym.slice(5) - 1]}</td><td class="r">${ribu(b.masuk)}</td><td class="r">${ribu(b.keluar)}</td><td class="r">${b.masuk - b.keluar < 0 ? "–" : ""}${ribu(b.masuk - b.keluar)}</td><td class="r">${ribu(b.saldo)}</td></tr>`).join("")}
+          <tr class="b"><td>Jumlah</td><td class="r">${ribu(T.tot.masuk)}</td><td class="r">${ribu(T.tot.keluar)}</td><td class="r">${T.tot.masuk - T.tot.keluar < 0 ? "–" : ""}${ribu(T.tot.masuk - T.tot.keluar)}</td><td class="r">${ribu(T.akhir)}</td></tr></table>
+        <div class="dua"><div><h2>Pemasukan per kategori</h2><table class="t">${kat("Masuk")}</table></div><div><h2>Pengeluaran per kategori</h2><table class="t">${kat("Keluar")}</table></div></div>
+        <div class="ttd">${[["Bendahara", org("bendahara")], ["Pemeriksa", p.pemeriksa], ["Ketua", org("ketua")]].map(([j, n]) =>
+          `<div><span>${j}</span><i></i><b>${esc(n || "")}</b></div>`).join("")}</div>
+        <p class="a4-kaki">Dicetak ${tglPendek(hariIni())} · ${D.sumber.jenis === "contoh" ? "DATA CONTOH · " : ""}Sumber: lembar data kas ${esc(p.nama_pendek || "")}</p>
+      </article>`;
   }
 
   // ---------- Riwayat ----------
@@ -287,6 +410,7 @@
       <div class="card pad profil">${logo(72)}<b>${esc(p.nama)}</b><span>${esc(p.naungan || "")}</span></div>
       <div class="card pad"><div class="ikrow">${`<span class="tx-ic in">${ic("peta")}</span>`}<div><b>Alamat</b><span>${esc(p.alamat || "—")}</span></div></div>
         ${peta ? `<a class="btn sec" href="${esc(peta)}" target="_blank" rel="noopener">${ic("peta")}Buka di peta</a>` : ""}</div>
+      ${kegiatanMendatang().length ? `<section><h2>Agenda mendatang</h2><div class="card list">${kegiatanMendatang().map(barisKegiatan).join("")}</div></section>` : ""}
       ${D.kegiatan.length ? `<section><h2>Kegiatan rutin</h2><div class="card list">${D.kegiatan.map(k =>
         `<div class="ikrow"><span class="tx-ic in">${ic(window.KAS_IKON[k.ikon] ? k.ikon : "jam")}</span><div><b>${esc(k.nama)}</b><span>${esc(k.jadwal)}</span></div></div>`).join("")}</div></section>` : ""}
       ${D.pengurus.length ? `<section><h2>Pengurus</h2><div class="card list">${D.pengurus.map(o => {
@@ -393,11 +517,13 @@
       case "privasi": html = vPrivasi(); break;
       case "tv": html = vTV(); document.body.className = "mode-tv"; break;
       case "cetak": html = vCetak(seg[1]); document.body.className = "mode-cetak"; break;
+      case "tahun": html = vTahun(seg[1]); break;
+      case "cetak-tahun": html = vCetakTahun(seg[1]); document.body.className = "mode-cetak"; break;
       default: html = vBeranda();
     }
     app.innerHTML = html;
     skalaTV();
-    const judul = { laporan: "Laporan", riwayat: "Riwayat", t: "Detail", program: "Program", info: "Info", tv: "Layar TV", cetak: "Laporan cetak" }[seg[0]];
+    const judul = { laporan: "Laporan", riwayat: "Riwayat", t: "Detail", program: "Program", info: "Info", tv: "Layar TV", cetak: "Laporan cetak", tahun: "Laporan tahunan", "cetak-tahun": "Laporan tahunan" }[seg[0]];
     document.title = (judul ? judul + " · " : "") + "Kas " + (D.profil.nama_pendek || "Al Qomar");
   }
   let rutePrev = "", langkah = 0;
@@ -426,6 +552,12 @@
     else if (el.dataset.tema) { setTema(el.dataset.tema); render(); }
     else if (el.id === "muatUlang") { el.disabled = true; await muat(); }
     else if (el.id === "cetak") { window.print(); }
+    else if (el.id === "salinPekan") {
+      const lbl = el.lastChild;
+      try { await navigator.clipboard.writeText(teksRingkasanPekan()); lbl.textContent = "Teks tersalin"; }
+      catch (err) { lbl.textContent = "Gagal menyalin"; }
+      setTimeout(() => { lbl.textContent = "Salin teks ringkasan"; }, 2500);
+    }
   });
   app.addEventListener("input", e => {
     if (e.target.id === "cari") { ui.cari = e.target.value; ui.batasHari = 30; document.getElementById("daftar").innerHTML = daftarRiwayat(); }
