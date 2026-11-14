@@ -4,7 +4,7 @@
   const app = document.getElementById("app");
   let D = null;            // data aktif
   let galatMuat = null;    // pesan bila gagal memuat
-  const ui = { cari: "", jenis: "", dana: "", batasHari: 30, hariSholat: 0, geserHijri: 0 };
+  const ui = { cari: "", jenis: "", dana: "", batasHari: 30, hariSholat: 0, geserKal: 0, pilihTgl: "", tabKal: "besar" };
 
   // ---------- helpers ----------
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -470,40 +470,74 @@
   function segWaktu(aktif) {
     return `<nav class="seg dua seg-waktu" aria-label="Bagian waktu">
       <a href="#/waktu" class="${aktif === "shalat" ? "on" : ""}" ${aktif === "shalat" ? 'aria-current="page"' : ""}>Waktu shalat</a>
-      <a href="#/waktu/kalender" class="${aktif === "kalender" ? "on" : ""}" ${aktif === "kalender" ? 'aria-current="page"' : ""}>Kalender Hijriah</a></nav>`;
+      <a href="#/waktu/kalender" class="${aktif === "kalender" ? "on" : ""}" ${aktif === "kalender" ? 'aria-current="page"' : ""}>Kalender</a></nav>`;
   }
+  // ---------- Kalender: Masehi + Hijriah + pasaran Jawa ----------
+  const PASARAN = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"];
+  // 14 Nov 2026 = Sabtu Kliwon (siklus 5 hari, tidak pernah meleset)
+  const pasaran = tgl => PASARAN[((Math.round(dOf(tgl).getTime() / 864e5) % 5) + 8) % 5];
+  const angkaArab = n => String(n).replace(/\d/g, c => "٠١٢٣٤٥٦٧٨٩"[c]);
+  const hariPasaran = tgl => `${HARI[dOf(tgl).getUTCDay()]} ${pasaran(tgl)}`;
+  // puasa sunnah/wajib pada tanggal tertentu (null bila tidak ada / haram berpuasa)
+  function puasaPada(tgl, h) {
+    if (!h) return null;
+    const k = `${h.m}-${h.d}`, hari = dOf(tgl).getUTCDay();
+    if (["10-1", "12-10", "12-11", "12-12", "12-13"].includes(k)) return null; // hari raya & Tasyrik
+    if (h.m === 9) return "Puasa Ramadhan";
+    if (k === "12-9") return "Puasa Arafah";
+    if (k === "12-8") return "Puasa Tarwiyah";
+    if (k === "1-9") return "Puasa Tasu'a";
+    if (k === "1-10") return "Puasa Asyura";
+    if (h.d >= 13 && h.d <= 15) return "Puasa Ayyamul Bidh";
+    if (hari === 1) return "Puasa Senin";
+    if (hari === 4) return "Puasa Kamis";
+    return null;
+  }
+  const hariBesar = h => (h ? HARI_BESAR[`${h.m}-${h.d}`] || (`${h.m}-${h.d}` in HARI_BESAR ? "Hari Tasyrik" : "") : "");
   function vKalender() {
     const k = kini();
-    let b = bulanHijri(k.tgl);
-    if (!b) return `${banner()}${headerTab("Waktu")}${segWaktu("kalender")}<div class="kosong-besar"><b>Kalender Hijriah belum didukung browser ini</b><span>Coba perbarui Chrome atau Safari di HP.</span></div>${tabBar("waktu")}`;
-    for (let i = 0; i < ui.geserHijri; i++) b = bulanHijri(geserHari(b.awal, b.panjang));
-    for (let i = 0; i > ui.geserHijri; i--) b = bulanHijri(geserHari(b.awal, -1));
-    const akhir = geserHari(b.awal, b.panjang - 1);
+    if (!keHijri(k.tgl)) return `${banner()}${headerTab("Waktu")}${segWaktu("kalender")}<div class="kosong-besar"><b>Kalender Hijriah belum didukung browser ini</b><span>Coba perbarui Chrome atau Safari di HP.</span></div>${tabBar("waktu")}`;
+    const ym = geserBulan(k.tgl.slice(0, 7), ui.geserKal), awal = awalBulan(ym), akhir = akhirBulan(ym);
+    const pilih = ui.pilihTgl && ui.pilihTgl.slice(0, 7) === ym ? ui.pilihTgl : (ui.geserKal === 0 ? k.tgl : awal);
+    const mulai = geserHari(awal, -dOf(awal).getUTCDay());
+    const minggu = Math.ceil((dOf(akhir).getUTCDate() + dOf(awal).getUTCDay()) / 7);
     let sel = "";
-    for (let i = 0; i < dOf(b.awal).getUTCDay(); i++) sel += `<span class="kh-sel kosong"></span>`;
-    const acara = [];
-    for (let d = 1; d <= b.panjang; d++) {
-      const tgl = geserHari(b.awal, d - 1), m = dOf(tgl), kunci = `${b.m}-${d}`, besar = HARI_BESAR[kunci] || (kunci in HARI_BESAR ? "Hari Tasyrik" : "");
-      const bidh = b.m !== 12 && d >= 13 && d <= 15; // 13 Dzulhijjah hari Tasyrik, tidak berpuasa
-      if (HARI_BESAR[kunci]) acara.push({ d, tgl, nama: besar });
-      sel += `<span class="kh-sel ${tgl === k.tgl ? "hari-ini" : ""} ${besar ? "besar" : ""} ${m.getUTCDay() === 5 ? "jumat" : ""}"${besar ? ` title="${esc(besar)}"` : ""}>
-        <b>${d}</b><small>${m.getUTCDate()}${m.getUTCDate() === 1 || d === 1 ? " " + BL3[m.getUTCMonth()] : ""}</small>${bidh ? '<i class="bidh"></i>' : ""}</span>`;
+    const acara = [], puasa = [];
+    for (let i = 0; i < minggu * 7; i++) {
+      const tgl = geserHari(mulai, i), m = dOf(tgl), h = keHijri(tgl), luar = tgl.slice(0, 7) !== ym;
+      const besar = hariBesar(h), ps = puasaPada(tgl, h);
+      if (!luar) {
+        if (h && HARI_BESAR[`${h.m}-${h.d}`]) acara.push({ tgl, h, nama: besar });
+        if (ps && !/Senin|Kamis/.test(ps)) puasa.push({ tgl, h, nama: ps });
+      }
+      const label = `${tglPanjang(tgl)}, ${pasaran(tgl)}, ${hijriah(tgl)}${besar ? ", " + besar : ""}${ps ? ", " + ps : ""}`;
+      sel += `<button class="kh-sel${luar ? " luar" : ""}${tgl === k.tgl ? " hari-ini" : ""}${tgl === pilih && !luar ? " dipilih" : ""}${m.getUTCDay() === 0 ? " ahad" : ""}${m.getUTCDay() === 5 ? " jumat" : ""}${besar ? " besar" : ""}" data-tgl="${tgl}" aria-label="${esc(label)}">
+        <span class="kh-atas">${h && !luar ? `<i class="kh-h">${angkaArab(h.d)}</i>` : ""}<b>${m.getUTCDate()}</b></span>
+        ${luar ? "" : `<small>${pasaran(tgl)}</small><span class="kh-titik">${besar ? '<i class="t-besar"></i>' : ""}${ps ? '<i class="t-puasa"></i>' : ""}</span>`}</button>`;
     }
-    const bidh = `Puasa Ayyamul Bidh (13–15 ${BLN_H[b.m - 1]}): ${rentang(geserHari(b.awal, 12), geserHari(b.awal, 14))}.`;
+    const ha = keHijri(awal), hb = keHijri(akhir);
+    const rentangH = ha.m === hb.m ? `${BLN_H[ha.m - 1]} ${ha.y} H` : `${BLN_H[ha.m - 1]}${ha.y !== hb.y ? " " + ha.y : ""} – ${BLN_H[hb.m - 1]} ${hb.y} H`;
+    const hp = keHijri(pilih), bp = hariBesar(hp), pp = puasaPada(pilih, hp);
+    const baris = a => `<div class="ikrow"><span class="agenda-tgl"><b>${dOf(a.tgl).getUTCDate()}</b><span>${BL3[dOf(a.tgl).getUTCMonth()]}</span></span>
+      <div><b>${esc(a.nama)}</b><span>${hariPasaran(a.tgl)} · ${a.h.d} ${BLN_H[a.h.m - 1]} ${a.h.y} H</span></div></div>`;
+    const tabPuasa = ui.tabKal === "puasa";
+    const isi = tabPuasa
+      ? `${puasa.map(baris).join("")}<div class="ikrow"><span class="agenda-tgl"><b>S·K</b><span>rutin</span></span><div><b>Puasa Senin & Kamis</b><span>Ditandai titik emas di kalender</span></div></div>`
+      : (acara.map(baris).join("") || '<p class="kosong">Tidak ada hari besar Islam bulan ini.</p>');
     return `${banner()}${headerTab("Waktu")}${segWaktu("kalender")}
-      <div class="pemilih card"><button class="btn-ic" data-hijri="-1" aria-label="Bulan Hijriah sebelumnya">${ic("chevron-kiri")}</button>
-        <div class="nb-teks"><b>${BLN_H[b.m - 1]} ${b.y} H</b><span class="sub">${rentang(b.awal, akhir)}</span></div>
-        <button class="btn-ic" data-hijri="1" aria-label="Bulan Hijriah berikutnya">${ic("chevron-kanan")}</button></div>
+      <div class="card kh-kepala"><b>${hariPasaran(pilih)}, ${tglPendek(pilih).replace(/ (\w+) /, (x, b) => " " + BLN[BL3.indexOf(b)] + " ")}</b>
+        <span>${esc(hijriah(pilih))}</span>${bp || pp ? `<span class="kh-ket-hari">${[bp, pp].filter(Boolean).map(esc).join(" · ")}</span>` : ""}</div>
+      <div class="pemilih card"><button class="btn-ic" data-kal="-1" aria-label="Bulan sebelumnya">${ic("chevron-kiri")}</button>
+        <div class="nb-teks"><b>${bulanNama(ym)}</b><span class="sub">${rentangH}</span></div>
+        <button class="btn-ic" data-kal="1" aria-label="Bulan berikutnya">${ic("chevron-kanan")}</button></div>
       <div class="card kalender-h">
-        <div class="kh-grid kh-hari">${["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(x => `<span>${x}</span>`).join("")}</div>
+        <div class="kh-grid kh-hari">${["Ahad", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(x => `<span>${x}</span>`).join("")}</div>
         <div class="kh-grid">${sel}</div>
-        <div class="kh-ket"><span><i class="k-ini"></i>Hari ini</span><span><i class="k-besar"></i>Hari besar</span><span><i class="bidh"></i>Ayyamul Bidh</span></div></div>
-      ${ui.geserHijri !== 0 ? `<button class="link-c" data-hijri="0">Kembali ke bulan ini</button>` : `<p class="note">Hari ini: <b>${esc(hijriah(k.tgl))}</b> · ${tglPanjang(k.tgl)}</p>`}
-      <section><h2>Hari penting bulan ini</h2>
-        <div class="card list">${acara.map(a => `<div class="ikrow"><span class="agenda-tgl"><b>${a.d}</b><span>${BLN_H3[b.m - 1]}</span></span>
-          <div><b>${esc(a.nama)}</b><span>${tglPanjang(a.tgl)}</span></div></div>`).join("")}
-          ${b.m === 12 ? "" : `<div class="ikrow"><span class="agenda-tgl"><b>13</b><span>${BLN_H3[b.m - 1]}</span></span><div><b>Puasa Ayyamul Bidh</b><span>${esc(bidh.split(": ")[1])}</span></div></div>`}</div></section>
-      <p class="note">Kalender Umm al-Qura (hasil perhitungan). Awal Ramadhan, Syawal, dan Dzulhijjah di Indonesia ditetapkan lewat sidang isbat Kemenag, jadi bisa selisih satu hari. Dalam kalender Hijriah, hari berganti saat Maghrib.</p>
+        <div class="kh-ket"><span><i class="t-besar"></i>Hari besar Islam</span><span><i class="t-puasa"></i>Puasa sunnah</span><span><i class="kh-h">٤</i>Tanggal Hijriah</span></div></div>
+      ${ui.geserKal !== 0 || (ui.pilihTgl && ui.pilihTgl !== k.tgl) ? `<button class="link-c" data-kal="0">Kembali ke hari ini</button>` : ""}
+      <div class="seg dua kh-tab" role="tablist"><button class="${tabPuasa ? "" : "on"}" data-tabkal="besar" role="tab" aria-selected="${!tabPuasa}">Hari besar</button><button class="${tabPuasa ? "on" : ""}" data-tabkal="puasa" role="tab" aria-selected="${tabPuasa}">Puasa</button></div>
+      <div class="card list">${isi}</div>
+      <p class="note">Tanggal Hijriah memakai kalender Umm al-Qura (hasil perhitungan). Awal Ramadhan, Syawal, dan Dzulhijjah di Indonesia ditetapkan lewat sidang isbat Kemenag, jadi bisa selisih satu hari. Hari berganti saat Maghrib. Pasaran Jawa: Legi, Pahing, Pon, Wage, Kliwon.</p>
       ${tabBar("waktu")}`;
   }
 
@@ -659,7 +693,7 @@
     }
     app.innerHTML = html;
     skalaTV();
-    const judul = { ibadah: "Waktu shalat", waktu: seg[1] === "kalender" ? "Kalender Hijriah" : "Waktu shalat", laporan: "Laporan", riwayat: "Riwayat", t: "Detail", program: "Program", info: "Info", tv: "Layar TV", cetak: "Laporan cetak", tahun: "Laporan tahunan", "cetak-tahun": "Laporan tahunan" }[seg[0]];
+    const judul = { ibadah: "Waktu shalat", waktu: seg[1] === "kalender" ? "Kalender" : "Waktu shalat", laporan: "Laporan", riwayat: "Riwayat", t: "Detail", program: "Program", info: "Info", tv: "Layar TV", cetak: "Laporan cetak", tahun: "Laporan tahunan", "cetak-tahun": "Laporan tahunan" }[seg[0]];
     document.title = (judul ? judul + " · " : "") + "Kas " + (D.profil.nama_pendek || "Al Qomar");
   }
   let rutePrev = "", langkah = 0;
@@ -686,7 +720,12 @@
       setTimeout(() => { el.lastChild.textContent = "Salin nomor rekening"; }, 2500);
     }
     else if (el.dataset.tema) { setTema(el.dataset.tema); render(); }
-    else if (el.dataset.hijri) { ui.geserHijri = el.dataset.hijri === "0" ? 0 : ui.geserHijri + +el.dataset.hijri; render(); }
+    else if (el.dataset.kal) { if (el.dataset.kal === "0") { ui.geserKal = 0; ui.pilihTgl = ""; } else { ui.geserKal += +el.dataset.kal; ui.pilihTgl = ""; } render(); }
+    else if (el.dataset.tabkal) { ui.tabKal = el.dataset.tabkal; render(); }
+    else if (el.dataset.tgl && el.classList.contains("kh-sel")) {
+      const k = kini(), t = el.dataset.tgl, [y1, m1] = k.tgl.split("-").map(Number), [y2, m2] = t.split("-").map(Number);
+      ui.geserKal = (y2 - y1) * 12 + (m2 - m1); ui.pilihTgl = t; render();
+    }
     else if (el.dataset.hari) { ui.hariSholat = el.dataset.hari === "0" ? 0 : ui.hariSholat + +el.dataset.hari; render(); }
     else if (el.id === "muatUlang") { el.disabled = true; await muat(); }
     else if (el.id === "cetak") { window.print(); }
