@@ -1,7 +1,7 @@
 // Service worker: menyimpan tampilan aplikasi agar bisa dibuka saat offline.
 // Data Sheets disimpan oleh js/data.js (localStorage), bukan di sini.
-const VERSI = "kas-al-qomar-v5";
-const FILE = ["./", "index.html", "config.js", "css/app.css", "js/icons.js", "js/data.js", "js/sholat.js", "js/tahlil.js", "js/app.js",
+const VERSI = "kas-al-qomar-v6";
+const FILE = ["./", "index.html", "config.js", "css/app.css", "js/icons.js", "js/data.js", "js/sholat.js", "js/app.js",
   "data/contoh.js", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
